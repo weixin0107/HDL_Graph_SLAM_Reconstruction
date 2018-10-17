@@ -1,0 +1,37 @@
+<launch>
+    <node pkg="hdl_graph_slam_reconstruction" type="prefiltering" name="prefiltering" >
+    </node>
+    <node pkg="hdl_graph_slam_reconstruction" type="scanMatchingOdometry" name="scanMatchingOdometry" >
+        <param name="odom_frame_id" value="odom" />
+        <param name="keyframe_delta_trans" value="0.25" />
+        <param name="keyframe_delta_angle" value="1.0" />
+        <param name="keyframe_delta_time" value="10.0" />
+        <param name="max_acceptable_trans" value="10.0" />
+        <param name="max_acceptable_angle" value="3.0" />
+        <param name="downsample_resolution" value="0.1" />
+        <param name="registration_method" value="GICP" />
+        <param name="ndt_resolution" value="1.0" />
+    </node>
+    <node pkg="hdl_graph_slam_reconstruction" type="floorDetection" name="floorDetection" output="screen">
+        <param name="tiltDeg" value="0.0" />
+        <param name="sensorHeight" value="2.0" />
+        <param name="heightRange" value="1.0" />
+        <param name="floorPointsThresh" value="512" />
+        <param name="floorNormalThresh" value="20.0" />
+    </node>
+    <node pkg="hdl_graph_slam_reconstruction" type="loopDetection" name="loopDetection" output="screen">
+        <param name="keyframe_delta_trans" value="2.0" />
+        <param name="keyframe_delta_angle" value="1.0" />
+        
+        <param name="use_const_info_matrix" value="false" />
+        <param name="const_stddev_x" value="0.5" />
+        <param name="const_stddev_q" value="0.1" />
+        <param name="min_stddev_x" value="0.1" />
+        <param name="max_stddev_x" value="0.5" />
+        <param name="min_stddev_q" value="0.05" />
+        <param name="max_stddev_q" value="0.2" />
+        <param name="gain" value="20" />
+        <param name="maxRange" value="10" />
+        <param name="fitness_score_thresh" value="0.5" />
+    </node>
+</launch>
