@@ -74,7 +74,7 @@ private:
         if( inliers->indices.size() < _floorPointsThresh ){
             return boost::none;
         }
-        std::cout << "num of inliers: " << inliers->indices.size() << std::endl;
+        //std::cout << "num of inliers: " << inliers->indices.size() << std::endl;
         //extract inlier points
         pcl::PointCloud<PointT>::Ptr inlier_cloud(new pcl::PointCloud<PointT>);
         pcl::ExtractIndices<PointT> extract;

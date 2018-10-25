@@ -10,6 +10,7 @@
 
 
 
+
 class Prefiltering{
 public:
     typedef pcl::PointXYZI PointT;
@@ -40,7 +41,7 @@ private:
         if(src_cloud->empty()) {
             return;
         }
-        ROS_INFO("new source cloud is coming!");
+        //ROS_INFO("new source cloud is coming!");
         pcl::PointCloud<PointT>::ConstPtr filtered;
         filtered = downsample(src_cloud); 
         filtered = outlier_removal(filtered);
@@ -64,12 +65,13 @@ private:
         if(!outlier_removal_filter) {
             return src_cloud;
         }
-
+        ros::Time start = ros::Time::now();
         pcl::PointCloud<PointT>::Ptr filtered(new pcl::PointCloud<PointT>());
         outlier_removal_filter->setInputCloud(src_cloud);
         outlier_removal_filter->filter(*filtered);
         filtered->header = src_cloud->header;
-
+        ros::Time end = ros::Time::now();
+        //std::cout << (end-start) << std::endl;
         return filtered;
     }
 private:

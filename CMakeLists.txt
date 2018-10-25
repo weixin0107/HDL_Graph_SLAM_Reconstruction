@@ -6,6 +6,7 @@ add_compile_options(-std=c++11)
 add_definitions("-g")
 
 SET(CMAKE_CXX_FLAGS "-std=c++11 -g -O2 -Wall ${CMAKE_CXX_FLAGS}")
+##SET(CMAKE_CXX_FLAGS "-std=c++11 -g -Wall ${CMAKE_CXX_FLAGS}")
 set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR})
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)

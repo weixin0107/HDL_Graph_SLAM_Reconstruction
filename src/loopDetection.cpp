@@ -7,6 +7,8 @@
 #include <hdl_graph_slam_reconstruction/graph_slam.hpp>
 #include <hdl_graph_slam_reconstruction/ros_time_hash.hpp>
 #include <hdl_graph_slam_reconstruction/information_matrix_calculator.hpp>
+#include <hdl_graph_slam_reconstruction/Loopdetector.hpp>
+
 
 #include <Eigen/Core>
 
@@ -39,19 +41,24 @@ private:
         ros::param::get("~odom_frame_id",_odom_frame_id);
         ros::param::get("~map_frame_id",_map_frame_id);
         ros::param::get("~max_keyframes_per_update",_max_keyframes_per_update);
+        ros::param::get("~graph_update_interval",_graph_update_interval);
         //subscriber
         _subOdom.reset(new message_filters::Subscriber<nav_msgs::Odometry>(_nh,"/odom",32));
         _subPoints.reset(new message_filters::Subscriber<sensor_msgs::PointCloud2>(_nh,"/filtered_points",32));
         _sync.reset(new message_filters::TimeSynchronizer<sensor_msgs::PointCloud2,nav_msgs::Odometry>(*_subPoints,*_subOdom,32));
         _sync->registerCallback(boost::bind(&LoopDetection::cloudMsgsHandler, this, _1, _2));
         _subFloor = _nh.subscribe<hdl_graph_slam_reconstruction::FloorCoeffs1>("/floor_coeffs",32,&LoopDetection::floorCoeffsMsgsHandler,this);
-        
         //reset
         _keyframeUpdater.reset(new KeyFrameUpdater());
-        _graphslam.reset(new GraphSlam());          //error
+        _graphslam.reset(new GraphSlam());
+        _loop_detector.reset(new LoopDetector());
         _trans_odom2map.setIdentity();
+        _floor_plane_node = nullptr;
+        //optimization
+        _optimizationTimer = _nh.createTimer(ros::Duration(_graph_update_interval),&LoopDetection::optimization_timer_callback,this);
     }
     void cloudMsgsHandler(const sensor_msgs::PointCloud2::ConstPtr& src_cloud,const nav_msgs::Odometry::ConstPtr& odom) {
+        std::cout << "cloud msgs!" << std::endl;
         const ros::Time cloudStamp = src_cloud->header.stamp;
         Eigen::Isometry3d trans = odom2isometry(odom);  //odometry to transform matrix
 
@@ -70,6 +77,7 @@ private:
         std::cout << "size of keyframe queue: " << _keyframe_queue.size() << std::endl;
     }
     bool flush_keyframe_queue(){    //add all keyframes into the pose graph, return true if at least one keyframe exists
+        std::cout << "flush keyframe queue" << std::endl;
         std::lock_guard<std::mutex> lock(_keyframe_queue_mutex);
         if( _keyframe_queue.empty() ){
             return false;
@@ -97,19 +105,48 @@ private:
             const auto& prev_keyframe = (i==0)?_keyframes.back():_keyframe_queue[i-1];
             Eigen::Isometry3d relative_pose = keyframe->_odom.inverse()*prev_keyframe->_odom;
             Eigen::MatrixXd info = _info_matrix_calculator.calc_information_matrix(keyframe->_cloud,prev_keyframe->_cloud,relative_pose);
-            _graphslam->add_se3_edge(keyframe->_node,prev_keyframe->_node,relative_pose,info);
-            
+            _graphslam->add_se3_edge(keyframe->_node,prev_keyframe->_node,relative_pose,info); 
         }
         _keyframe_queue.erase(_keyframe_queue.begin(), _keyframe_queue.begin() + num_processed + 1);
     }
     void floorCoeffsMsgsHandler(const hdl_graph_slam_reconstruction::FloorCoeffs1::ConstPtr& floor_coeffs_msgs){
-        std::cout << "floor coeffs msgs!" << std::endl;
+        //std::cout << "floor coeffs msgs!" << std::endl;
         if( floor_coeffs_msgs->coeffs.empty() ){
             return;
         }
         std::cout << "floor coeffs msgs!" << std::endl;
         std::lock_guard<std::mutex> lock(_floor_coeffs_queue_mutex);
         _floor_coeffs_queue.push_back(floor_coeffs_msgs);
+        
+    }
+    bool flush_floor_coeffs_queue(){
+        std::cout << "flush floor queue" << std::endl;
+    }
+    void optimization_timer_callback(const ros::TimerEvent& event){
+        /*
+        if( !flush_keyframe_queue() && !flush_floor_coeffs_queue() ){
+            return;
+        }
+        */
+        std::cout << "optimization call back!" << std::endl;
+        if( !flush_keyframe_queue() ){
+            return;
+        }
+        //loop detection and add loop-edge into graph
+        std::vector<Loop::Ptr> loops = _loop_detector->detectLoop(_keyframes,_new_keyframe_queue,*_graphslam);
+        for(const auto& loop : loops) {
+            Eigen::Isometry3d relpose(loop->_relpose.cast<double>());
+            Eigen::MatrixXd information_matrix = _info_matrix_calculator.calc_information_matrix(loop->_keyframe1->_cloud, loop->_keyframe2->_cloud, relpose);
+            _graphslam->add_se3_edge(loop->_keyframe1->_node, loop->_keyframe2->_node, relpose, information_matrix);
+        }
+        std::copy(_new_keyframe_queue.begin(), _new_keyframe_queue.end(), std::back_inserter(_keyframes));
+        _new_keyframe_queue.clear();
+
+        // optimize the pose graph
+        std::cout << "optimize..." << std::endl;
+        _graphslam->optimize();
+        std::cout << "Done" << std::endl;
+
     }
     static Eigen::Isometry3d odom2isometry(const nav_msgs::Odometry::ConstPtr& odom){
         Eigen::Isometry3d isometry = Eigen::Isometry3d::Identity();
@@ -151,12 +188,19 @@ private:
     //floor_coeffs queue
     std::mutex _floor_coeffs_queue_mutex;
     std::deque<hdl_graph_slam_reconstruction::FloorCoeffs1::ConstPtr> _floor_coeffs_queue;
+    g2o::VertexPlane* _floor_plane_node;
 
     Eigen::Isometry3d _trans_odom2map;  //transformation between odom and map coordinate
     std::mutex _trans_odom2map_mutex;
 
     std::unique_ptr<GraphSlam> _graphslam;
     InformationMatrixCalculator _info_matrix_calculator;
+
+    //loop detector
+    std::unique_ptr<LoopDetector> _loop_detector;
+    //optimizaion
+    double _graph_update_interval;
+    ros::Timer _optimizationTimer;
 };
 
 int main(int argc, char *argv[]){

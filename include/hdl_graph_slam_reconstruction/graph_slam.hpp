@@ -55,12 +55,8 @@ public:
             std::cin.ignore(1);
             return;
         }
-        std::cout << "Done" << std::endl;
-        ROS_INFO("blabala");
-        //_floor_plane_node = add_plane_node(Eigen::Vector4d(0.0,0.0,1.0,0.0));
-        ROS_INFO("blabala");
-        //_floor_plane_node->setFixed(true);
-        ROS_INFO("Graph slam has been initialized");
+        //g2o::VertexPlane* floor_node = add_plane_node(Eigen::Vector4d(0.0,0.0,1.0,0.0));
+        std::cout << "Graph slam has been initialized" << std::endl;
     }
     g2o::VertexSE3* add_se3_node(const Eigen::Isometry3d& pose) {           //add se3 node
         g2o::VertexSE3* vertex(new g2o::VertexSE3());
@@ -160,8 +156,7 @@ public:
         _graph.reset();
     }
 public:
-    std::unique_ptr<g2o::SparseOptimizer> _graph;  // graph                  
-    g2o::VertexPlane* _floor_plane_node;           // ground floor plane node
+    std::unique_ptr<g2o::SparseOptimizer> _graph;  // graph
 };
 
 

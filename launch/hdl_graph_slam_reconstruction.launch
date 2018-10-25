@@ -1,5 +1,5 @@
 <launch>
-    <node pkg="hdl_graph_slam_reconstruction" type="prefiltering" name="prefiltering" >
+    <node pkg="hdl_graph_slam_reconstruction" type="prefiltering" name="prefiltering" output="screen">
     </node>
     <node pkg="hdl_graph_slam_reconstruction" type="scanMatchingOdometry" name="scanMatchingOdometry" >
         <param name="odom_frame_id" value="odom" />
@@ -33,5 +33,7 @@
         <param name="gain" value="20" />
         <param name="maxRange" value="10" />
         <param name="fitness_score_thresh" value="0.5" />
+        <param name="graph_update_interval" value="30.0" />
     </node>
+    <node pkg="rviz" type="rviz" name="rviz"/>
 </launch>
