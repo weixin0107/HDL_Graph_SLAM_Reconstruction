@@ -9,7 +9,7 @@
         <param name="max_acceptable_trans" value="10.0" />
         <param name="max_acceptable_angle" value="3.0" />
         <param name="downsample_resolution" value="0.1" />
-        <param name="registration_method" value="GICP" />
+        <param name="registration_method" value="NDTOMP" />
         <param name="ndt_resolution" value="1.0" />
     </node>
     <node pkg="hdl_graph_slam_reconstruction" type="floorDetection" name="floorDetection" output="screen">
@@ -30,6 +30,7 @@
         <param name="max_stddev_x" value="0.5" />
         <param name="min_stddev_q" value="0.05" />
         <param name="max_stddev_q" value="0.2" />
+        <param name="max_keyframes_per_update" value="10" />
         <param name="gain" value="20" />
         <param name="maxRange" value="10" />
         <param name="fitness_score_thresh" value="0.5" />
